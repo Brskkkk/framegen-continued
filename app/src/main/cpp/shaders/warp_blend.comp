@@ -1,0 +1,66 @@
+#version 450
+
+// 16x16 workgroups over the output image - standard, portable choice that
+// doesn't rely on any device-specific subgroup/wave size.
+layout(local_size_x = 16, local_size_y = 16) in;
+
+// Packed RGBA8 pixels, one uint per pixel (0xAABBGGRR little-endian byte
+// order to match Android's ARGB_8888 raw pixel layout as seen via
+// AndroidBitmap_lockPixels). Plain storage buffers (not storage images),
+// which keeps this to core Vulkan 1.0 - no VK_KHR_sampler_ycbcr or image
+// format support queries needed, just buffer reads/writes.
+layout(std430, binding = 0) readonly buffer Frame1Buf { uint data[]; } frame1;
+layout(std430, binding = 1) readonly buffer Frame2Buf { uint data[]; } frame2;
+layout(std430, binding = 2) writeonly buffer OutBuf { uint data[]; } outImg;
+
+layout(std140, binding = 3) uniform Params {
+    int width;
+    int height;
+    float mvx; // full-resolution pixels
+    float mvy;
+    float alpha;
+} params;
+
+vec4 unpackPixel(uint p) {
+    return vec4(
+        float(p & 0xFFu),
+        float((p >> 8u) & 0xFFu),
+        float((p >> 16u) & 0xFFu),
+        float((p >> 24u) & 0xFFu)
+    ) / 255.0;
+}
+
+uint packPixel(vec4 c) {
+    uint r = uint(clamp(c.r, 0.0, 1.0) * 255.0 + 0.5);
+    uint g = uint(clamp(c.g, 0.0, 1.0) * 255.0 + 0.5);
+    uint b = uint(clamp(c.b, 0.0, 1.0) * 255.0 + 0.5);
+    uint a = uint(clamp(c.a, 0.0, 1.0) * 255.0 + 0.5);
+    return r | (g << 8u) | (b << 16u) | (a << 24u);
+}
+
+void main() {
+    ivec2 xy = ivec2(gl_GlobalInvocationID.xy);
+    if (xy.x >= params.width || xy.y >= params.height) return;
+
+    vec2 p1 = vec2(xy) - vec2(params.mvx, params.mvy) * params.alpha;
+    vec2 p2 = vec2(xy) + vec2(params.mvx, params.mvy) * (1.0 - params.alpha);
+
+    ivec2 i1 = ivec2(
+        clamp(int(p1.x + 0.5), 0, params.width - 1),
+        clamp(int(p1.y + 0.5), 0, params.height - 1)
+    );
+    ivec2 i2 = ivec2(
+        clamp(int(p2.x + 0.5), 0, params.width - 1),
+        clamp(int(p2.y + 0.5), 0, params.height - 1)
+    );
+
+    uint idx1 = uint(i1.y * params.width + i1.x);
+    uint idx2 = uint(i2.y * params.width + i2.x);
+
+    vec4 c1 = unpackPixel(frame1.data[idx1]);
+    vec4 c2 = unpackPixel(frame2.data[idx2]);
+    vec4 outc = mix(c1, c2, params.alpha);
+
+    uint outIdx = uint(xy.y * params.width + xy.x);
+    outImg.data[outIdx] = packPixel(outc);
+}

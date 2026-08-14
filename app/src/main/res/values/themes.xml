@@ -1,0 +1,3 @@
+<resources>
+    <style name="Theme.FrameInterp" parent="Theme.MaterialComponents.DayNight.NoActionBar" />
+</resources>

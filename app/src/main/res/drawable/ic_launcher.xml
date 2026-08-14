@@ -1,0 +1,27 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <path
+        android:pathData="M0,0h108v108h-108z"
+        android:fillColor="#1B1F27" />
+
+    <!-- Back frame -->
+    <path
+        android:pathData="M24,30 L74,30 L74,70 L24,70 Z"
+        android:fillColor="#29B6F6"
+        android:fillAlpha="0.55" />
+
+    <!-- Front frame, offset to imply motion / interpolation -->
+    <path
+        android:pathData="M34,38 L84,38 L84,78 L34,78 Z"
+        android:fillColor="#4CAF50"
+        android:fillAlpha="0.9" />
+
+    <!-- Play triangle -->
+    <path
+        android:pathData="M50,50 L50,66 L64,58 Z"
+        android:fillColor="#FFFFFF" />
+</vector>
